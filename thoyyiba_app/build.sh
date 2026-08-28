@@ -1,10 +1,14 @@
 ﻿#!/bin/bash
-# Install Flutter
+echo "Setting up CI environment..."
+export CI=true
+export FLUTTER_ROOT="$PWD/flutter"
+export PATH="$PATH:$FLUTTER_ROOT/bin"
+
 echo "Downloading Flutter..."
 git clone https://github.com/flutter/flutter.git -b stable --depth 1
 
-# Add flutter to path
-export PATH="$PATH:$PWD/flutter/bin"
+echo "Disabling analytics and suppressing prompts..."
+flutter config --no-analytics
 
 echo "Flutter version:"
 flutter --version
