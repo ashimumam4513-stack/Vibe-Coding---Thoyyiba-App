@@ -12,4 +12,4 @@ flutter --version
 echo "Building web app..."
 flutter clean
 flutter pub get
-flutter build web --web-renderer html
+flutter build web
