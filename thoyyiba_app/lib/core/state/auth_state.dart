@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Wait, it's just 'package:firebase_auth/firebase_auth.dart'
+import 'package:firebase_auth/firebase_auth.dart';
+import 'cart_state.dart';
+import 'order_state.dart';
 
 class AuthState {
   static final ValueNotifier<bool> isLoggedIn = ValueNotifier<bool>(false);
@@ -12,10 +14,18 @@ class AuthState {
         isLoggedIn.value = true;
         userEmail.value = user.email ?? '';
         userName.value = user.displayName ?? user.email?.split('@')[0] ?? '';
+        
+        // Start syncing user's database
+        CartState.listenToCart(user.uid);
+        OrderState.listenToOrders(user.uid);
       } else {
         isLoggedIn.value = false;
         userEmail.value = '';
         userName.value = '';
+        
+        // Clear local memory when logged out
+        CartState.stopListening();
+        OrderState.stopListening();
       }
     });
   }
