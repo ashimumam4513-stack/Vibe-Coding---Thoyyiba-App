@@ -1,13 +1,36 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'core/state/auth_state.dart';
 import 'core/theme/app_theme.dart';
 import 'features/home/main_layout.dart';
+import 'core/state/auth_state.dart';
 
-void main() {
-  AuthState.init();
-  runApp(const ThoyyibaApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    AuthState.init();
+    runApp(const ThoyyibaApp());
+  } catch (e, stackTrace) {
+    runApp(MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.red,
+        body: Center(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'Firebase Init Error:\n$e\n\nStackTrace:\n$stackTrace',
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ));
+  }
 }
 
 class ThoyyibaApp extends StatefulWidget {
@@ -18,7 +41,7 @@ class ThoyyibaApp extends StatefulWidget {
 }
 
 class _ThoyyibaAppState extends State<ThoyyibaApp> {
-  bool isDarkMode = true; // Default to dark mode based on vibes
+  bool isDarkMode = true;
 
   void toggleTheme() {
     setState(() {
@@ -41,6 +64,3 @@ class _ThoyyibaAppState extends State<ThoyyibaApp> {
     );
   }
 }
-
-
-
