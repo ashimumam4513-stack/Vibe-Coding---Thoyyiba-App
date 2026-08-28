@@ -1,14 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
-import '../../../shared/widgets/floating_bottom_nav.dart';
-import '../../../shared/widgets/app_footer.dart';
 import 'login_screen.dart';
-import '../../core/state/auth_state.dart';
-import '../home/main_layout.dart'; // import to navigate to login
+import '../home/main_layout.dart';
 
 class SignUpScreen extends StatefulWidget {
   final VoidCallback onThemeToggle;
@@ -25,9 +23,44 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
   bool _obscurePassword = true;
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _signUp() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty || _nameController.text.isEmpty) return;
+    setState(() { _isLoading = true; });
+    try {
+      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      
+      // Update display name
+      await userCredential.user?.updateDisplayName(_nameController.text.trim());
+
+      if (mounted) {
+        final layout = MainLayoutScreen.of(context);
+        if (layout != null) {
+          layout.switchTab(0);
+        } else {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => MainLayoutScreen(onThemeToggle: widget.onThemeToggle, isDarkMode: widget.isDarkMode, initialIndex: 0)),
+            (route) => false,
+          );
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Sign up failed', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+      }
+    } finally {
+      if (mounted) setState(() { _isLoading = false; });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +76,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 120), // Padding for floating nav
+          padding: const EdgeInsets.only(bottom: 120),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -61,13 +94,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'JOIN THE RITUAL.',
+                'JOIN THE CLUB.',
                 style: const TextStyle(fontFamily: 'Nura', fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 1.5).copyWith(color: textColor),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               Text(
-                'Create an account to begin at Explorer tier.',
+                'Create an account to join Explorer tier.',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   color: isDark ? Colors.white70 : Colors.black87,
@@ -82,16 +115,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   children: [
                     CustomButton(
                       type: ButtonType.outline,
-                      text: 'SIGN UP WITH GOOGLE',
+                      text: 'CONTINUE WITH GOOGLE',
                       onPressed: () {},
-                        icon: Image.asset('assets/images/google_icon.png', width: 24, height: 24),
+                      icon: Image.asset('assets/images/google_icon.png', width: 24, height: 24),
                     ),
                     const SizedBox(height: 24),
                     
                     // OR Divider
                     Row(
                       children: [
-                        Expanded(child: Divider(color: theme.dividerColor.withOpacity(0.2))),
+                        Expanded(child: Divider(color: theme.dividerColor.withValues(alpha: 0.2))),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
@@ -103,27 +136,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                           ),
                         ),
-                        Expanded(child: Divider(color: theme.dividerColor.withOpacity(0.2))),
+                        Expanded(child: Divider(color: theme.dividerColor.withValues(alpha: 0.2))),
                       ],
                     ),
                     const SizedBox(height: 24),
 
                     // Inputs
-                    CustomTextField(controller: _nameController, label: 'Name', isRequired: true, hintText: 'Enter name', suffixIcon: const Icon(Icons.help_outline, size: 18),),
+                    CustomTextField(
+                      controller: _nameController,
+                      label: 'Full Name',
+                      isRequired: true,
+                      hintText: 'Enter your full name',
+                      prefixIcon: const Icon(Icons.person_outline, size: 18),
+                    ),
                     const SizedBox(height: 16),
-                    const CustomTextField(
+                    CustomTextField(
+                      controller: _emailController,
                       label: 'Email',
                       isRequired: true,
                       hintText: 'Enter your email',
-                      prefixIcon: Icon(Icons.mail_outline, size: 18),
-                      suffixIcon: Icon(Icons.help_outline, size: 18),
+                      prefixIcon: const Icon(Icons.mail_outline, size: 18),
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 16),
                     CustomTextField(
+                      controller: _passwordController,
                       label: 'Password',
                       isRequired: true,
-                      hintText: 'Enter password',
+                      hintText: 'Create a password',
                       obscureText: _obscurePassword,
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -139,13 +179,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // Create Button
-                    CustomButton(text: 'Create', onPressed: () { AuthState.userName.value = _nameController.text; AuthState.userEmail.value = _emailController.text; AuthState.isLoggedIn.value = true; final layout = MainLayoutScreen.of(context); if (layout != null) { layout.switchTab(0); } else { Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => MainLayoutScreen(onThemeToggle: widget.onThemeToggle, isDarkMode: widget.isDarkMode, initialIndex: 0)), (route) => false); } },),
+                    // Sign Up Button
+                    _isLoading 
+                      ? const CircularProgressIndicator() 
+                      : CustomButton(text: 'Sign Up', onPressed: _signUp),
                     const SizedBox(height: 48),
 
                     // Footer links
                     GestureDetector(
                       onTap: () {
+                        // Navigate to Login Screen
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
@@ -157,17 +200,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         );
                       },
                       child: Text(
-                        'HAVE AN ACCOUNT? SIGN IN',
+                        'ALREADY HAVE AN ACCOUNT? LOG IN',
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.5,
-                          color: textColor.withOpacity(0.7),
+                          color: textColor.withValues(alpha: 0.7),
                         ),
                       ),
                     ),
+                    const SizedBox(height: 24),
                     GestureDetector(
-                      onTap: () => Navigator.popUntil(context, (route) => route.isFirst),
+                      onTap: () {
+                        final layout = MainLayoutScreen.of(context);
+                        if (layout != null) { layout.switchTab(0); } else { Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => MainLayoutScreen(onThemeToggle: widget.onThemeToggle, isDarkMode: widget.isDarkMode, initialIndex: 0)), (route) => false); }
+                      },
                       child: Text(
                         '< BACK TO HOME',
                         style: GoogleFonts.inter(
@@ -190,21 +237,3 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

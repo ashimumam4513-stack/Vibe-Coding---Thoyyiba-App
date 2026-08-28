@@ -1,15 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../shared/widgets/custom_app_bar.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
-import '../../../shared/widgets/floating_bottom_nav.dart';
-import '../../../shared/widgets/app_footer.dart';
 import 'sign_up_screen.dart';
-import '../../core/state/auth_state.dart';
-import '../home/main_layout.dart'; // import to navigate back
+import '../home/main_layout.dart'; 
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onThemeToggle;
@@ -26,7 +23,39 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
+
+  Future<void> _login() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) return;
+    setState(() { _isLoading = true; });
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      if (mounted) {
+        final layout = MainLayoutScreen.of(context);
+        if (layout != null) {
+          layout.switchTab(0);
+        } else {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => MainLayoutScreen(onThemeToggle: widget.onThemeToggle, isDarkMode: widget.isDarkMode, initialIndex: 0)),
+            (route) => false,
+          );
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Login failed', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+      }
+    } finally {
+      if (mounted) setState(() { _isLoading = false; });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,16 +137,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 24),
 
                     // Inputs
-                    const CustomTextField(
+                    CustomTextField(
+                      controller: _emailController,
                       label: 'Email',
                       isRequired: true,
                       hintText: 'Enter your email',
-                      prefixIcon: Icon(Icons.mail_outline, size: 18),
-                      suffixIcon: Icon(Icons.help_outline, size: 18),
+                      prefixIcon: const Icon(Icons.mail_outline, size: 18),
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 16),
                     CustomTextField(
+                      controller: _passwordController,
                       label: 'Password',
                       isRequired: true,
                       hintText: 'Enter password',
@@ -137,7 +167,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 32),
 
                     // Log In Button
-                    CustomButton(text: 'Log In', onPressed: () { AuthState.isLoggedIn.value = true; final layout = MainLayoutScreen.of(context); if (layout != null) { layout.switchTab(0); } else { Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => MainLayoutScreen(onThemeToggle: widget.onThemeToggle, isDarkMode: widget.isDarkMode, initialIndex: 0)), (route) => false); } },),
+                    _isLoading 
+                      ? const CircularProgressIndicator() 
+                      : CustomButton(text: 'Log In', onPressed: _login),
                     const SizedBox(height: 48),
 
                     // Footer links
@@ -165,13 +197,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    Text(
-                      '< BACK TO HOME',
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 1.5,
-                        color: textColor.withValues(alpha: 0.5),
+                    GestureDetector(
+                      onTap: () {
+                        final layout = MainLayoutScreen.of(context);
+                        if (layout != null) { layout.switchTab(0); } else { Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => MainLayoutScreen(onThemeToggle: widget.onThemeToggle, isDarkMode: widget.isDarkMode, initialIndex: 0)), (route) => false); }
+                      },
+                      child: Text(
+                        '< BACK TO HOME',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 1.5,
+                          color: textColor.withValues(alpha: 0.5),
+                        ),
                       ),
                     ),
                   ],
@@ -186,19 +224,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
