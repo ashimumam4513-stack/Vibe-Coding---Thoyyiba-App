@@ -4,6 +4,7 @@ import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'features/home/main_layout.dart';
 import 'core/state/auth_state.dart';
+import 'package:flutter/foundation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +13,19 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     AuthState.init();
+    
+    // Check for email link
+    if (kIsWeb) {
+      final url = Uri.base.toString();
+      if (url.contains('apiKey') && url.contains('oobCode')) {
+        try {
+          await AuthState.signInWithEmailLink(url);
+        } catch (e) {
+          debugPrint('Email link sign in error: $e');
+        }
+      }
+    }
+    
     runApp(const ThoyyibaApp());
   } catch (e, stackTrace) {
     runApp(MaterialApp(
